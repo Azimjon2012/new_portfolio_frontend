@@ -3,6 +3,8 @@ import axios from "axios";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, provider } from "./firebase";
 import { motion } from "framer-motion";
+import Particles from "react-tsparticles";
+import Tilt from "react-parallax-tilt";
 
 const API = "https://new-portfolio-backend-11l0.onrender.com";
 
@@ -20,7 +22,7 @@ function App() {
     live: "",
   });
 
-  // 🔥 cursor glow
+  // 💡 cursor glow
   const [pos, setPos] = useState({ x: 0, y: 0 });
   useEffect(() => {
     const move = (e) => setPos({ x: e.clientX, y: e.clientY });
@@ -28,29 +30,24 @@ function App() {
     return () => window.removeEventListener("mousemove", move);
   }, []);
 
+  // 🔐 auth
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
-        try {
-          const res = await axios.post(`${API}/auth`, {
-            email: u.email,
-          });
-          setRole(res.data.role);
-        } catch (err) {
-          console.log(err);
-        }
+        const res = await axios.post(`${API}/auth`, { email: u.email });
+        setRole(res.data.role);
       }
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   const fetchProjects = async () => {
     try {
       const res = await axios.get(`${API}/projects`);
       setProjects(res.data);
-    } catch (err) {
-      console.log(err);
+    } catch (e) {
+      console.log(e);
     } finally {
       setLoading(false);
     }
@@ -61,14 +58,10 @@ function App() {
   }, []);
 
   const login = async () => {
-    const result = await signInWithPopup(auth, provider);
-    const u = result.user;
-    setUser(u);
-
-    const res = await axios.post(`${API}/auth`, {
-      email: u.email,
-    });
-    setRole(res.data.role);
+    const res = await signInWithPopup(auth, provider);
+    setUser(res.user);
+    const r = await axios.post(`${API}/auth`, { email: res.user.email });
+    setRole(r.data.role);
   };
 
   const logout = async () => {
@@ -77,14 +70,11 @@ function App() {
     setRole(null);
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
   const addProject = async () => {
-    if (!form.title) return;
     await axios.post(`${API}/projects`, form);
-    setForm({ title: "", description: "", image: "", github: "", live: "" });
     fetchProjects();
   };
 
@@ -109,18 +99,35 @@ function App() {
     fetchProjects();
   };
 
-  return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+  // 🧠 magnetic buttons
+  const magnetic = (e) => {
+    const rect = e.target.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    e.target.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
+  };
 
-      {/* 🌌 animated background */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute w-[500px] h-[500px] bg-purple-600 opacity-30 blur-[120px] rounded-full top-[-100px] left-[-100px] animate-pulse"/>
-        <div className="absolute w-[400px] h-[400px] bg-blue-500 opacity-20 blur-[120px] rounded-full bottom-[-100px] right-[-100px] animate-pulse"/>
-      </div>
+  const reset = (e) => (e.target.style.transform = "translate(0,0)");
+
+  return (
+    <div className="min-h-screen bg-black text-white overflow-hidden relative">
+
+      {/* 🌌 PARTICLES */}
+      <Particles
+        options={{
+          particles: {
+            number: { value: 30 },
+            size: { value: 2 },
+            move: { speed: 0.4 },
+            opacity: { value: 0.3 },
+          },
+        }}
+        className="absolute inset-0 -z-20"
+      />
 
       {/* 💡 cursor glow */}
       <div
-        className="pointer-events-none fixed w-96 h-96 rounded-full blur-[140px] opacity-20 transition"
+        className="pointer-events-none fixed w-96 h-96 rounded-full blur-[140px] opacity-20"
         style={{
           background: "radial-gradient(circle, #9333ea, transparent)",
           left: pos.x - 200,
@@ -129,130 +136,108 @@ function App() {
       />
 
       {/* HEADER */}
-      <div className="flex justify-between items-center p-6">
-        <motion.h1
-          initial={{ opacity: 0, y: -40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]"
-        >
+      <div className="flex justify-between p-6">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 text-transparent bg-clip-text">
           My Portfolio
-        </motion.h1>
+        </h1>
 
         {!user ? (
           <button
             onClick={login}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-2 rounded-xl shadow-lg hover:scale-110 hover:shadow-2xl transition"
+            className="bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-2 rounded-xl"
           >
             Login
           </button>
         ) : (
-          <div className="flex gap-4 items-center">
-            <span className="text-sm opacity-70">{user.email}</span>
-            <button
-              onClick={logout}
-              className="bg-red-500 px-3 py-1 rounded-xl hover:bg-red-600 transition"
-            >
+          <div className="flex gap-3">
+            <span>{user.email}</span>
+            <button onClick={logout} className="bg-red-500 px-2 rounded">
               Logout
             </button>
           </div>
         )}
       </div>
 
-      {/* ADMIN PANEL */}
+      {/* ADMIN */}
       {role === "admin" && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="mx-6 mb-10 p-6 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_0_40px_rgba(168,85,247,0.2)] hover:shadow-[0_0_60px_rgba(168,85,247,0.4)] transition"
-        >
-          <h2 className="text-xl mb-4">Admin Panel</h2>
-
+        <div className="mx-6 mb-10 p-6 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10">
+          <h2 className="mb-4">Admin Panel</h2>
           <div className="grid md:grid-cols-2 gap-3">
-            <input name="title" value={form.title} onChange={handleChange} placeholder="Title" className="p-2 rounded text-black"/>
-            <input name="description" value={form.description} onChange={handleChange} placeholder="Description" className="p-2 rounded text-black"/>
-            <input name="image" value={form.image} onChange={handleChange} placeholder="Image URL" className="p-2 rounded text-black"/>
-            <input name="github" value={form.github} onChange={handleChange} placeholder="GitHub" className="p-2 rounded text-black"/>
-            <input name="live" value={form.live} onChange={handleChange} placeholder="Live link" className="p-2 rounded text-black"/>
+            {Object.keys(form).map((k) => (
+              <input
+                key={k}
+                name={k}
+                placeholder={k}
+                onChange={handleChange}
+                className="p-2 rounded text-black"
+              />
+            ))}
           </div>
-
           <button
             onClick={addProject}
-            className="mt-4 bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2 rounded-xl hover:scale-105 transition"
+            className="mt-4 bg-purple-500 px-4 py-2 rounded"
           >
-            Add Project
+            Add
           </button>
-        </motion.div>
+        </div>
       )}
 
       {/* PROJECTS */}
       {loading ? (
-        <p className="text-center text-lg animate-pulse opacity-60">
-          Loading projects...
-        </p>
+        <p className="text-center">Loading...</p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 px-6">
           {projects.map((p, i) => (
-            <motion.div
-              key={p._id}
-              initial={{ opacity: 0, y: 60 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              whileHover={{ scale: 1.05, rotateX: 3, rotateY: 3 }}
-              className="group relative rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 overflow-hidden shadow-2xl transition-all duration-300 hover:scale-[1.04] hover:shadow-purple-500/50"
-            >
-              {/* glow overlay */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition"/>
+            <Tilt key={p._id} glareEnable={true} glareMaxOpacity={0.3}>
+              <motion.div
+                initial={{ opacity: 0, y: 60 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="group relative rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden shadow-2xl hover:shadow-purple-500/40"
+              >
+                <div className="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition"/>
 
-              <img
-                src={p.image || "https://via.placeholder.com/400"}
-                className="w-full h-48 object-cover group-hover:scale-110 transition duration-500"
-              />
+                <img
+                  src={p.image || "https://via.placeholder.com/400"}
+                  className="w-full h-48 object-cover group-hover:scale-110 transition"
+                />
 
-              <div className="p-4">
-                <h2 className="text-lg font-bold">{p.title}</h2>
-                <p className="text-sm opacity-70">{p.description}</p>
+                <div className="p-4">
+                  <h2 className="font-bold">{p.title}</h2>
+                  <p className="text-sm opacity-70">{p.description}</p>
 
-                <div className="flex gap-2 flex-wrap mt-3">
+                  <div className="flex gap-2 mt-3 flex-wrap">
 
-                  <button
-                    onClick={() => like(p._id)}
-                    className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1 rounded-xl shadow-lg hover:scale-110 hover:shadow-blue-500/50 transition-all duration-300"
-                  >
-                    👍 {p.likes?.length || 0}
-                  </button>
-
-                  <button
-                    onClick={() => dislike(p._id)}
-                    className="flex items-center gap-1 bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1 rounded-xl shadow-lg hover:scale-110 hover:shadow-red-500/50 transition-all duration-300"
-                  >
-                    👎 {p.dislikes?.length || 0}
-                  </button>
-
-                  <a href={p.github} target="_blank">
-                    <button className="bg-blue-600 px-3 py-1 rounded-xl hover:scale-105 transition">
-                      GitHub
-                    </button>
-                  </a>
-
-                  <a href={p.live} target="_blank">
-                    <button className="bg-green-500 px-3 py-1 rounded-xl hover:scale-105 transition">
-                      Live
-                    </button>
-                  </a>
-
-                  {role === "admin" && (
                     <button
-                      onClick={() => deleteProject(p._id)}
-                      className="bg-red-500 px-3 py-1 rounded-xl hover:scale-105 transition"
+                      onMouseMove={magnetic}
+                      onMouseLeave={reset}
+                      onClick={() => like(p._id)}
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-1 rounded-xl"
                     >
-                      Delete
+                      👍 {p.likes?.length || 0}
                     </button>
-                  )}
-                </div>
 
-              </div>
-            </motion.div>
+                    <button
+                      onMouseMove={magnetic}
+                      onMouseLeave={reset}
+                      onClick={() => dislike(p._id)}
+                      className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1 rounded-xl"
+                    >
+                      👎 {p.dislikes?.length || 0}
+                    </button>
+
+                    {role === "admin" && (
+                      <button
+                        onClick={() => deleteProject(p._id)}
+                        className="bg-red-500 px-2 rounded"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </Tilt>
           ))}
         </div>
       )}
