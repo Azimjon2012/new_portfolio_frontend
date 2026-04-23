@@ -20,7 +20,7 @@ function App() {
     live: "",
   });
 
-  // 🔥 glowing cursor
+  // 🔥 cursor glow
   const [pos, setPos] = useState({ x: 0, y: 0 });
   useEffect(() => {
     const move = (e) => setPos({ x: e.clientX, y: e.clientY });
@@ -82,7 +82,9 @@ function App() {
   };
 
   const addProject = async () => {
+    if (!form.title) return;
     await axios.post(`${API}/projects`, form);
+    setForm({ title: "", description: "", image: "", github: "", live: "" });
     fetchProjects();
   };
 
@@ -110,25 +112,29 @@ function App() {
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
 
-      {/* 🔥 cursor glow */}
+      {/* 🌌 animated background */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute w-[500px] h-[500px] bg-purple-600 opacity-30 blur-[120px] rounded-full top-[-100px] left-[-100px] animate-pulse"/>
+        <div className="absolute w-[400px] h-[400px] bg-blue-500 opacity-20 blur-[120px] rounded-full bottom-[-100px] right-[-100px] animate-pulse"/>
+      </div>
+
+      {/* 💡 cursor glow */}
       <div
-        className="pointer-events-none fixed w-72 h-72 rounded-full blur-3xl opacity-30"
+        className="pointer-events-none fixed w-96 h-96 rounded-full blur-[140px] opacity-20 transition"
         style={{
-          background: "radial-gradient(circle, #7c3aed, transparent)",
-          left: pos.x - 150,
-          top: pos.y - 150,
+          background: "radial-gradient(circle, #9333ea, transparent)",
+          left: pos.x - 200,
+          top: pos.y - 200,
         }}
       />
-
-      {/* gradient bg */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-black to-blue-900/20 -z-10" />
 
       {/* HEADER */}
       <div className="flex justify-between items-center p-6">
         <motion.h1
           initial={{ opacity: 0, y: -40 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 text-transparent bg-clip-text"
+          transition={{ duration: 0.7 }}
+          className="text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]"
         >
           My Portfolio
         </motion.h1>
@@ -136,14 +142,17 @@ function App() {
         {!user ? (
           <button
             onClick={login}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-2 rounded-xl shadow-lg hover:scale-110 transition"
+            className="bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-2 rounded-xl shadow-lg hover:scale-110 hover:shadow-2xl transition"
           >
             Login
           </button>
         ) : (
-          <div className="flex gap-4">
-            <span>{user.email}</span>
-            <button onClick={logout} className="bg-red-500 px-3 py-1 rounded">
+          <div className="flex gap-4 items-center">
+            <span className="text-sm opacity-70">{user.email}</span>
+            <button
+              onClick={logout}
+              className="bg-red-500 px-3 py-1 rounded-xl hover:bg-red-600 transition"
+            >
               Logout
             </button>
           </div>
@@ -155,20 +164,16 @@ function App() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mx-6 mb-10 p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl"
+          className="mx-6 mb-10 p-6 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_0_40px_rgba(168,85,247,0.2)] hover:shadow-[0_0_60px_rgba(168,85,247,0.4)] transition"
         >
           <h2 className="text-xl mb-4">Admin Panel</h2>
 
           <div className="grid md:grid-cols-2 gap-3">
-            {Object.keys(form).map((k) => (
-              <input
-                key={k}
-                name={k}
-                placeholder={k}
-                onChange={handleChange}
-                className="p-2 rounded text-black"
-              />
-            ))}
+            <input name="title" value={form.title} onChange={handleChange} placeholder="Title" className="p-2 rounded text-black"/>
+            <input name="description" value={form.description} onChange={handleChange} placeholder="Description" className="p-2 rounded text-black"/>
+            <input name="image" value={form.image} onChange={handleChange} placeholder="Image URL" className="p-2 rounded text-black"/>
+            <input name="github" value={form.github} onChange={handleChange} placeholder="GitHub" className="p-2 rounded text-black"/>
+            <input name="live" value={form.live} onChange={handleChange} placeholder="Live link" className="p-2 rounded text-black"/>
           </div>
 
           <button
@@ -182,7 +187,9 @@ function App() {
 
       {/* PROJECTS */}
       {loading ? (
-        <p className="text-center animate-pulse">Loading...</p>
+        <p className="text-center text-lg animate-pulse opacity-60">
+          Loading projects...
+        </p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 px-6">
           {projects.map((p, i) => (
@@ -191,9 +198,12 @@ function App() {
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              whileHover={{ scale: 1.05, rotateX: 3 }}
-              className="group rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden shadow-xl hover:shadow-purple-500/40 transition"
+              whileHover={{ scale: 1.05, rotateX: 3, rotateY: 3 }}
+              className="group relative rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 overflow-hidden shadow-2xl transition-all duration-300 hover:scale-[1.04] hover:shadow-purple-500/50"
             >
+              {/* glow overlay */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition"/>
+
               <img
                 src={p.image || "https://via.placeholder.com/400"}
                 className="w-full h-48 object-cover group-hover:scale-110 transition duration-500"
@@ -207,35 +217,40 @@ function App() {
 
                   <button
                     onClick={() => like(p._id)}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-1 rounded-xl hover:scale-110 transition shadow"
+                    className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1 rounded-xl shadow-lg hover:scale-110 hover:shadow-blue-500/50 transition-all duration-300"
                   >
                     👍 {p.likes?.length || 0}
                   </button>
 
                   <button
                     onClick={() => dislike(p._id)}
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 px-3 py-1 rounded-xl hover:scale-110 transition shadow"
+                    className="flex items-center gap-1 bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1 rounded-xl shadow-lg hover:scale-110 hover:shadow-red-500/50 transition-all duration-300"
                   >
                     👎 {p.dislikes?.length || 0}
                   </button>
 
                   <a href={p.github} target="_blank">
-                    <button className="bg-blue-600 px-3 py-1 rounded-xl">GitHub</button>
+                    <button className="bg-blue-600 px-3 py-1 rounded-xl hover:scale-105 transition">
+                      GitHub
+                    </button>
                   </a>
 
                   <a href={p.live} target="_blank">
-                    <button className="bg-green-500 px-3 py-1 rounded-xl">Live</button>
+                    <button className="bg-green-500 px-3 py-1 rounded-xl hover:scale-105 transition">
+                      Live
+                    </button>
                   </a>
 
                   {role === "admin" && (
                     <button
                       onClick={() => deleteProject(p._id)}
-                      className="bg-red-500 px-3 py-1 rounded-xl"
+                      className="bg-red-500 px-3 py-1 rounded-xl hover:scale-105 transition"
                     >
                       Delete
                     </button>
                   )}
                 </div>
+
               </div>
             </motion.div>
           ))}
