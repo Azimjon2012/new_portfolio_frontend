@@ -139,9 +139,12 @@ function App() {
             <input name="github" value={form.github} placeholder="GitHub" onChange={handleChange} className="p-2 rounded bg-white text-black" />
             <input name="live" value={form.live} placeholder="Live link" onChange={handleChange} className="p-2 rounded bg-white text-black" />
 
-            <button className="col-span-2 bg-gradient-to-r from-purple-500 to-pink-500 py-2 rounded-xl hover:scale-105 transition">
-              Add Project
-            </button>
+            <button
+  onClick={addProject}
+  className="col-span-2 bg-gradient-to-r from-purple-500 to-pink-500 py-2 rounded-xl hover:scale-105 transition"
+>
+  Add Project
+</button>
           </div>
         </motion.div>
       )}
