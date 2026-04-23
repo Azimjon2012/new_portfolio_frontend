@@ -4,8 +4,8 @@ import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, provider } from "./firebase";
 import { motion } from "framer-motion";
 
-// 🔴 ВСТАВЬ СВОЙ BACKEND URL СЮДА
-const API = "https://new-portfolio-beckend-1.onrender.com";
+// ✅ ПРАВИЛЬНЫЙ BACKEND
+const API = "https://new-portfolio-backend-11l0.onrender.com";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -25,19 +25,28 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
-        const res = await axios.post(`${API}/auth`, {
-          email: u.email,
-        });
-        setRole(res.data.role);
+        try {
+          const res = await axios.post(`${API}/auth`, {
+            email: u.email,
+          });
+          setRole(res.data.role);
+        } catch (err) {
+          console.log(err);
+        }
       }
     });
     return () => unsubscribe();
   }, []);
 
   const fetchProjects = async () => {
-    const res = await axios.get(`${API}/projects`);
-    setProjects(res.data);
-    setLoading(false);
+    try {
+      const res = await axios.get(`${API}/projects`);
+      setProjects(res.data);
+    } catch (err) {
+      console.log("Backend error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -45,15 +54,19 @@ function App() {
   }, []);
 
   const login = async () => {
-    const result = await signInWithPopup(auth, provider);
-    const u = result.user;
-    setUser(u);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const u = result.user;
+      setUser(u);
 
-    const res = await axios.post(`${API}/auth`, {
-      email: u.email,
-    });
+      const res = await axios.post(`${API}/auth`, {
+        email: u.email,
+      });
 
-    setRole(res.data.role);
+      setRole(res.data.role);
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   const logout = async () => {
@@ -92,7 +105,7 @@ function App() {
         {!user ? (
           <button
             onClick={login}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-2 rounded-2xl shadow-xl hover:scale-110 hover:shadow-2xl transition-all duration-300"
+            className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-2 rounded-2xl shadow-xl hover:scale-110 transition"
           >
             Login
           </button>
@@ -101,7 +114,7 @@ function App() {
             <span className="text-sm opacity-70">{user.email}</span>
             <button
               onClick={logout}
-              className="bg-red-500 px-3 py-1 rounded-xl hover:bg-red-600 transition"
+              className="bg-red-500 px-3 py-1 rounded-xl hover:bg-red-600"
             >
               Logout
             </button>
@@ -113,7 +126,7 @@ function App() {
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-16 bg-white/5 border border-white/10 backdrop-blur-2xl p-6 rounded-3xl shadow-2xl"
+          className="mb-16 bg-white/5 border border-white/10 backdrop-blur-2xl p-6 rounded-3xl"
         >
           <h2 className="text-xl mb-4 font-semibold">Add Project</h2>
 
@@ -124,10 +137,7 @@ function App() {
             <input name="github" value={form.github} placeholder="GitHub" onChange={handleChange} className="p-2 rounded bg-white text-black" />
             <input name="live" value={form.live} placeholder="Live link" onChange={handleChange} className="p-2 rounded bg-white text-black" />
 
-            <button
-              onClick={addProject}
-              className="col-span-2 bg-gradient-to-r from-purple-500 to-pink-500 py-2 rounded-xl hover:scale-105 transition"
-            >
+            <button onClick={addProject} className="col-span-2 bg-purple-600 py-2 rounded-xl">
               Add Project
             </button>
           </div>
@@ -138,12 +148,9 @@ function App() {
         <p className="text-center opacity-50 text-lg">Loading...</p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-          {projects.map((p, i) => (
+          {projects.map((p) => (
             <motion.div
               key={p._id}
-              initial={{ opacity: 0, y: 60 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
               whileHover={{ scale: 1.05 }}
               className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden"
             >
