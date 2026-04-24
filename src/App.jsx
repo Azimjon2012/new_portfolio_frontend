@@ -240,54 +240,83 @@ function Card({ p, like, dislike, deleteProject, role }) {
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
+  const glowX = useMotionValue(0);
+  const glowY = useMotionValue(0);
 
   const smoothX = useSpring(x, { stiffness: 140, damping: 20 });
   const smoothY = useSpring(y, { stiffness: 140, damping: 20 });
-  const smoothRX = useSpring(rx, { stiffness: 160, damping: 20 });
-  const smoothRY = useSpring(ry, { stiffness: 160, damping: 20 });
+
+  const smoothGlowX = useSpring(glowX, { stiffness: 200, damping: 30 });
+  const smoothGlowY = useSpring(glowY, { stiffness: 200, damping: 30 });
 
   const move = (e) => {
     const r = ref.current.getBoundingClientRect();
+
     const px = (e.clientX - r.left) / r.width - 0.5;
     const py = (e.clientY - r.top) / r.height - 0.5;
 
     x.set(px * 20);
     y.set(py * 20);
-    ry.set(px * 20);
-    rx.set(-py * 20);
+
+    glowX.set(e.clientX - r.left);
+    glowY.set(e.clientY - r.top);
+  };
+
+  const reset = () => {
+    x.set(0); y.set(0);
   };
 
   return (
     <motion.div
       ref={ref}
       onMouseMove={move}
-      onMouseLeave={() => { x.set(0); y.set(0); rx.set(0); ry.set(0); }}
+      onMouseLeave={reset}
       style={{
         x: smoothX,
         y: smoothY,
-        rotateX: smoothRX,
-        rotateY: smoothRY,
         transformPerspective: 1200,
       }}
-      whileHover={{ scale: 1.06, filter: "brightness(0.9)" }}
+      whileHover={{ scale: 1.06 }}
       className="group relative rounded-2xl overflow-hidden
       bg-gradient-to-br from-white/10 to-white/5
       backdrop-blur-2xl border border-white/10
       shadow-[0_30px_80px_rgba(0,0,0,0.9)]"
     >
+
+      {/* 💡 DYNAMIC GLOW */}
+      <motion.div
+        className="pointer-events-none absolute w-[300px] h-[300px] rounded-full blur-[100px] opacity-0 group-hover:opacity-100 transition"
+        style={{
+          left: smoothGlowX,
+          top: smoothGlowY,
+          transform: "translate(-50%, -50%)",
+          background:
+            "radial-gradient(circle, rgba(168,85,247,0.35), transparent 70%)",
+        }}
+      />
+
       <img src={p.image} className="w-full h-48 object-cover" />
 
-      <div className="p-4">
+      <div className="p-4 relative z-10">
         <h2 className="text-base font-semibold">{p.title}</h2>
         <p className="text-xs text-gray-400">{p.description}</p>
 
         <div className="flex gap-2 mt-4 flex-wrap">
-          <MiniButton onClick={() => like(p._id)}>👍 {p.likes?.length || 0}</MiniButton>
-          <MiniButton onClick={() => dislike(p._id)}>👎 {p.dislikes?.length || 0}</MiniButton>
-          <MiniButton onClick={() => window.open(p.github)}>GitHub</MiniButton>
-          <MiniButton onClick={() => window.open(p.live)}>Live</MiniButton>
+          <MiniButton onClick={() => like(p._id)}>
+            👍 {p.likes?.length || 0}
+          </MiniButton>
+
+          <MiniButton onClick={() => dislike(p._id)}>
+            👎 {p.dislikes?.length || 0}
+          </MiniButton>
+
+          <MiniButton onClick={() => window.open(p.github)}>
+            GitHub
+          </MiniButton>
+
+          <MiniButton onClick={() => window.open(p.live)}>
+            Live
+          </MiniButton>
 
           {role === "admin" && (
             <MiniButton danger onClick={() => deleteProject(p._id)}>
@@ -303,33 +332,47 @@ function Card({ p, like, dislike, deleteProject, role }) {
 /* MINI BUTTON */
 function MiniButton({ children, onClick, danger }) {
   const ref = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
 
-  const smoothX = useSpring(x, { stiffness: 180, damping: 18 });
-  const smoothY = useSpring(y, { stiffness: 180, damping: 18 });
+  const glowX = useMotionValue(0);
+  const glowY = useMotionValue(0);
+
+  const smoothX = useSpring(glowX, { stiffness: 200, damping: 25 });
+  const smoothY = useSpring(glowY, { stiffness: 200, damping: 25 });
 
   const move = (e) => {
-    const rect = ref.current.getBoundingClientRect();
-    x.set((e.clientX - (rect.left + rect.width / 2)) * 0.25);
-    y.set((e.clientY - (rect.top + rect.height / 2)) * 0.25);
+    const r = ref.current.getBoundingClientRect();
+    glowX.set(e.clientX - r.left);
+    glowY.set(e.clientY - r.top);
   };
 
   return (
     <motion.button
       ref={ref}
       onMouseMove={move}
-      onMouseLeave={() => { x.set(0); y.set(0); }}
-      style={{ x: smoothX, y: smoothY }}
-      onClick={onClick}
-      className={`px-2 py-1 rounded-md text-xs transition 
-      backdrop-blur-xl border border-white/10
+      onMouseLeave={() => { glowX.set(0); glowY.set(0); }}
+      className={`relative px-3 py-1 rounded-md text-xs overflow-hidden
+      backdrop-blur-xl border border-white/10 transition
       ${danger
         ? "bg-red-500/20 hover:bg-red-500/40"
         : "bg-white/10 hover:bg-white/20"
       }`}
+      onClick={onClick}
     >
-      {children}
+
+      {/* 💡 BUTTON GLOW */}
+      <motion.div
+        className="pointer-events-none absolute w-[120px] h-[120px] rounded-full blur-[50px] opacity-0 hover:opacity-100 transition"
+        style={{
+          left: smoothX,
+          top: smoothY,
+          transform: "translate(-50%, -50%)",
+          background: danger
+            ? "radial-gradient(circle, rgba(239,68,68,0.4), transparent 70%)"
+            : "radial-gradient(circle, rgba(255,255,255,0.35), transparent 70%)",
+        }}
+      />
+
+      <span className="relative z-10">{children}</span>
     </motion.button>
   );
 }
