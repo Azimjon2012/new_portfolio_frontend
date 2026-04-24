@@ -7,40 +7,50 @@ import Tilt from "react-parallax-tilt";
 
 const API = "https://new-portfolio-backend-11l0.onrender.com";
 
-/* ---------- Magnetic ---------- */
-function Magnetic({ children }) {
+// 🔥 Magnetic Button
+function Magnetic({ children, className = "", strength = 40 }) {
   const ref = React.useRef(null);
   const [pos, setPos] = React.useState({ x: 0, y: 0 });
 
-  const move = (e) => {
-    const r = ref.current.getBoundingClientRect();
-    const x = e.clientX - (r.left + r.width / 2);
-    const y = e.clientY - (r.top + r.height / 2);
-    setPos({ x: x / 5, y: y / 5 });
+  const handleMove = (e) => {
+    const rect = ref.current.getBoundingClientRect();
+    const x = e.clientX - (rect.left + rect.width / 2);
+    const y = e.clientY - (rect.top + rect.height / 2);
+    setPos({ x: x / strength, y: y / strength });
   };
+
+  const reset = () => setPos({ x: 0, y: 0 });
 
   return (
     <div
       ref={ref}
-      onMouseMove={move}
-      onMouseLeave={() => setPos({ x: 0, y: 0 })}
-      style={{
-        transform: `translate(${pos.x}px, ${pos.y}px)`,
-      }}
-      className="transition duration-200 inline-block"
+      onMouseMove={handleMove}
+      onMouseLeave={reset}
+      style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}
+      className={`inline-block transition-transform duration-200 ${className}`}
     >
       {children}
     </div>
   );
 }
 
-/* ---------- Floating orbs ---------- */
-function Orbs() {
+// 🌌 Particles
+function Particles() {
+  const particles = Array.from({ length: 25 });
+
   return (
     <div className="pointer-events-none fixed inset-0 -z-10">
-      <div className="absolute w-[900px] h-[900px] bg-purple-600/20 blur-[200px] rounded-full -top-40 -left-40 animate-pulse" />
-      <div className="absolute w-[800px] h-[800px] bg-blue-500/20 blur-[200px] rounded-full -bottom-40 -right-40 animate-pulse" />
-      <div className="absolute w-[500px] h-[500px] bg-pink-500/10 blur-[180px] rounded-full top-[30%] left-[40%]" />
+      {particles.map((_, i) => (
+        <div
+          key={i}
+          className="absolute w-1 h-1 bg-white/20 rounded-full animate-pulse"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDuration: `${2 + Math.random() * 4}s`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -79,9 +89,14 @@ function App() {
   }, []);
 
   const fetchProjects = async () => {
-    const res = await axios.get(`${API}/projects`);
-    setProjects(res.data);
-    setLoading(false);
+    try {
+      const res = await axios.get(`${API}/projects`);
+      setProjects(res.data);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -133,51 +148,51 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
 
-      <Orbs />
+      <Particles />
 
-      {/* CURSOR LIGHT */}
+      {/* BACKGROUND */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute w-[700px] h-[700px] bg-purple-600 opacity-20 blur-[180px] rounded-full top-[-200px] left-[-200px] animate-pulse" />
+        <div className="absolute w-[600px] h-[600px] bg-blue-500 opacity-20 blur-[180px] rounded-full bottom-[-200px] right-[-200px] animate-pulse" />
+      </div>
+
+      {/* CURSOR */}
       <div
-        className="pointer-events-none fixed w-[600px] h-[600px] rounded-full blur-[180px] opacity-30"
+        className="pointer-events-none fixed w-[420px] h-[420px] rounded-full blur-[150px] opacity-30"
         style={{
           background:
-            "radial-gradient(circle, rgba(124,58,237,0.5), transparent 70%)",
-          left: pos.x - 300,
-          top: pos.y - 300,
+            "radial-gradient(circle, rgba(124,58,237,0.7), transparent 70%)",
+          left: pos.x - 210,
+          top: pos.y - 210,
         }}
       />
 
       {/* HEADER */}
-      <div className="flex justify-between items-center px-10 py-8">
+      <div className="flex justify-between items-center p-6">
         <motion.h1
-          initial={{ opacity: 0, y: -30 }}
+          initial={{ opacity: 0, y: -40 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl font-semibold tracking-tight"
+          className="text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent"
         >
-          <span className="bg-gradient-to-r from-purple-400 via-blue-400 to-pink-400 bg-clip-text text-transparent">
-            Portfolio
-          </span>
+          My Portfolio
         </motion.h1>
 
         {!user ? (
           <Magnetic>
             <button
               onClick={login}
-              className="px-6 py-2 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20 
-              hover:bg-white/20 hover:shadow-[0_0_20px_rgba(124,58,237,0.4)] transition"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 px-5 py-2 rounded-2xl shadow-lg"
             >
               Login
             </button>
           </Magnetic>
         ) : (
-          <div className="flex gap-4 items-center">
-            <span className="text-sm text-gray-400">{user.email}</span>
+          <div className="flex gap-3 items-center">
+            <span className="text-sm opacity-70">{user.email}</span>
             <Magnetic>
-              <button
-                onClick={logout}
-                className="px-4 py-1.5 bg-red-500/80 rounded-lg hover:bg-red-500 transition"
-              >
+              <button onClick={logout} className="bg-red-500 px-3 py-1 rounded-xl">
                 Logout
               </button>
             </Magnetic>
@@ -185,41 +200,58 @@ function App() {
         )}
       </div>
 
+      {/* ADMIN */}
+      {role === "admin" && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mx-6 mb-10 p-8 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl"
+        >
+          <h2 className="mb-4">Admin Panel</h2>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {Object.keys(form).map((k) => (
+              <input
+                key={k}
+                name={k}
+                value={form[k]}
+                onChange={handleChange}
+                placeholder={k}
+                className="p-3 rounded-xl bg-white/10 text-white"
+              />
+            ))}
+          </div>
+
+          <button onClick={addProject} className="mt-4 bg-purple-500 px-4 py-2 rounded-xl">
+            Add Project
+          </button>
+        </motion.div>
+      )}
+
       {/* PROJECTS */}
       {loading ? (
-        <p className="text-center text-gray-500">Loading...</p>
+        <p className="text-center animate-pulse">Loading...</p>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12 px-10 pb-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 px-6 pb-10">
           {projects.map((p, i) => (
-            <Tilt key={p._id} tiltMaxAngleX={12} tiltMaxAngleY={12} scale={1.05}>
+            <Tilt key={p._id}>
               <motion.div
                 initial={{ opacity: 0, y: 60 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="group relative rounded-3xl overflow-hidden border border-white/10 
-                bg-white/5 backdrop-blur-xl 
-                hover:border-purple-500/40 transition-all duration-500"
+                transition={{ delay: i * 0.08 }}
+                className="group relative bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl hover:-translate-y-2 transition"
               >
-
-                {/* GLOW FRAME */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500 
-                bg-gradient-to-r from-purple-500/20 via-transparent to-blue-500/20 blur-xl" />
 
                 <img
                   src={p.image || "https://via.placeholder.com/400"}
-                  className="w-full h-52 object-cover transition duration-700 group-hover:scale-110"
+                  className="w-full h-52 object-cover group-hover:scale-110 transition"
                 />
 
-                <div className="p-5 relative z-10">
-                  <h2 className="font-semibold text-lg group-hover:text-purple-300 transition">
-                    {p.title}
-                  </h2>
+                <div className="p-5">
+                  <h2>{p.title}</h2>
+                  <p className="text-sm opacity-70">{p.description}</p>
 
-                  <p className="text-sm text-gray-400 mt-1 leading-relaxed">
-                    {p.description}
-                  </p>
-
-                  <div className="flex flex-wrap gap-2 mt-4 text-sm">
+                  <div className="flex gap-2 flex-wrap mt-3">
 
                     <Magnetic>
                       <button onClick={() => like(p._id)}>👍 {p.likes?.length || 0}</button>
