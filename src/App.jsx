@@ -6,12 +6,13 @@ import {
   motion,
   useMotionValue,
   useSpring,
+  useTransform,
 } from "framer-motion";
 import Scene3D from "./Scene3D";
 
 const API = "https://new-portfolio-backend-11l0.onrender.com";
 
-function App() {
+export default function App() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -25,47 +26,56 @@ function App() {
     live: "",
   });
 
-  // 🧠 global cursor tracking
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+  /* ───────────── GLOBAL CURSOR SYSTEM ───────────── */
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
 
-  const smoothX = useSpring(mouseX, { stiffness: 80, damping: 20 });
-  const smoothY = useSpring(mouseY, { stiffness: 80, damping: 20 });
+  const smx = useSpring(mx, { stiffness: 80, damping: 20 });
+  const smy = useSpring(my, { stiffness: 80, damping: 20 });
+
+  // velocity → влияет на glow
+  const vx = useMotionValue(0);
+  const vy = useMotionValue(0);
 
   useEffect(() => {
+    let lx = 0, ly = 0;
     const move = (e) => {
-      mouseX.set(e.clientX);
-      mouseY.set(e.clientY);
+      mx.set(e.clientX);
+      my.set(e.clientY);
+
+      vx.set(e.clientX - lx);
+      vy.set(e.clientY - ly);
+
+      lx = e.clientX;
+      ly = e.clientY;
     };
     window.addEventListener("mousemove", move);
     return () => window.removeEventListener("mousemove", move);
   }, []);
 
-  // 🔐 auth
+  const glowScale = useTransform(vx, [-50, 0, 50], [1.2, 1, 1.2]);
+
+  /* ───────────── AUTH ───────────── */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setUser(u);
-        const res = await axios.post(`${API}/auth`, {
-          email: u.email,
-        });
-        setRole(res.data.role);
-      }
+      if (!u) return;
+      setUser(u);
+      const res = await axios.post(`${API}/auth`, { email: u.email });
+      setRole(res.data.role);
     });
     return () => unsub();
   }, []);
 
-  // 📦 projects
+  /* ───────────── PROJECTS ───────────── */
   const fetchProjects = async () => {
     const res = await axios.get(`${API}/projects`);
     setProjects(res.data);
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  useEffect(() => { fetchProjects(); }, []);
 
+  /* ───────────── ACTIONS ───────────── */
   const login = async () => {
     const res = await signInWithPopup(auth, provider);
     setUser(res.user);
@@ -83,13 +93,7 @@ function App() {
   const addProject = async () => {
     if (!form.title) return;
     await axios.post(`${API}/projects`, form);
-    setForm({
-      title: "",
-      description: "",
-      image: "",
-      github: "",
-      live: "",
-    });
+    setForm({ title:"", description:"", image:"", github:"", live:"" });
     fetchProjects();
   };
 
@@ -100,34 +104,35 @@ function App() {
 
   const like = async (id) => {
     if (!user) return alert("Login first");
-    await axios.post(`${API}/projects/${id}/like`, {
-      userEmail: user.email,
-    });
+    await axios.post(`${API}/projects/${id}/like`, { userEmail: user.email });
     fetchProjects();
   };
 
   const dislike = async (id) => {
     if (!user) return alert("Login first");
-    await axios.post(`${API}/projects/${id}/dislike`, {
-      userEmail: user.email,
-    });
+    await axios.post(`${API}/projects/${id}/dislike`, { userEmail: user.email });
     fetchProjects();
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white relative overflow-x-hidden">
 
-      {/* 🌌 WebGL background */}
+      {/* 🌊 LIVE 3D BACKGROUND */}
       <div className="fixed inset-0 -z-50 pointer-events-none overflow-hidden">
         <Scene3D />
       </div>
 
-      {/* 💡 GLOBAL CURSOR LIGHT */}
+      {/* 💎 GLASS OVERLAY (shader feel) */}
+      <div className="fixed inset-0 -z-40 pointer-events-none backdrop-blur-[2px]
+      bg-[radial-gradient(circle_at_30%_30%,rgba(139,92,246,0.08),transparent_40%),radial-gradient(circle_at_70%_70%,rgba(59,130,246,0.08),transparent_40%)]" />
+
+      {/* 💡 GLOBAL LIGHT */}
       <motion.div
-        className="pointer-events-none fixed w-[500px] h-[500px] rounded-full blur-[140px] opacity-30 mix-blend-screen -z-40"
+        className="pointer-events-none fixed w-[500px] h-[500px] rounded-full blur-[140px] opacity-30 mix-blend-screen -z-30"
         style={{
-          left: smoothX,
-          top: smoothY,
+          left: smx,
+          top: smy,
+          scale: glowScale,
           transform: "translate(-50%, -50%)",
           background:
             "radial-gradient(circle, rgba(139,92,246,0.35), rgba(59,130,246,0.25), transparent 70%)",
@@ -154,25 +159,15 @@ function App() {
       {role === "admin" && (
         <div className="max-w-6xl mx-auto px-6 mb-10 p-6 rounded-2xl
         bg-white/[0.05] backdrop-blur-xl border border-white/10 shadow-xl relative z-10">
-          <h2 className="text-sm mb-4 text-gray-300">Admin Panel</h2>
-
           <div className="grid md:grid-cols-2 gap-3">
             {Object.keys(form).map((k) => (
-              <input
-                key={k}
-                name={k}
-                value={form[k]}
-                onChange={handleChange}
-                placeholder={k}
-                className="p-2 rounded-lg bg-white/[0.06] border border-white/10 text-sm outline-none focus:border-purple-400"
-              />
+              <input key={k} name={k} value={form[k]}
+                onChange={handleChange} placeholder={k}
+                className="p-2 rounded-lg bg-white/[0.06] border border-white/10 text-sm"/>
             ))}
           </div>
-
-          <button
-            onClick={addProject}
-            className="mt-4 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg text-sm"
-          >
+          <button onClick={addProject}
+            className="mt-4 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg text-sm">
             Add Project
           </button>
         </div>
@@ -185,137 +180,88 @@ function App() {
               <div key={i} className="h-64 bg-white/5 rounded-2xl animate-pulse"/>
             ))
           : projects.map((p, i) => (
-              <Card
-                key={p._id}
-                p={p}
-                i={i}
-                like={like}
-                dislike={dislike}
-                deleteProject={deleteProject}
-                role={role}
-              />
+              <Card key={p._id} p={p} i={i}
+                like={like} dislike={dislike}
+                deleteProject={deleteProject} role={role}/>
             ))}
       </div>
     </div>
   );
 }
 
-/* BUTTON */
+/* ───────────── BUTTON ───────────── */
 function Button({ children, onClick }) {
   return (
-    <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      className="px-5 py-2 rounded-xl bg-white/[0.08] border border-white/10 backdrop-blur-md hover:bg-white/[0.15]"
+    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
       onClick={onClick}
-    >
+      className="px-5 py-2 rounded-xl bg-white/[0.08] border border-white/10 backdrop-blur-md">
       {children}
     </motion.button>
   );
 }
 
-/* GOD TIER CARD */
+/* ───────────── GOD CARD ───────────── */
 function Card({ p, i, like, dislike, deleteProject, role }) {
   const ref = useRef(null);
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotateX = useMotionValue(0);
-  const rotateY = useMotionValue(0);
+  const rx = useMotionValue(0);
+  const ry = useMotionValue(0);
 
-  const smoothX = useSpring(x, { stiffness: 100, damping: 18 });
-  const smoothY = useSpring(y, { stiffness: 100, damping: 18 });
-  const smoothRX = useSpring(rotateX, { stiffness: 140, damping: 18 });
-  const smoothRY = useSpring(rotateY, { stiffness: 140, damping: 18 });
+  const sx = useSpring(x, { stiffness: 100, damping: 18 });
+  const sy = useSpring(y, { stiffness: 100, damping: 18 });
+  const srx = useSpring(rx, { stiffness: 140, damping: 18 });
+  const sry = useSpring(ry, { stiffness: 140, damping: 18 });
 
-  const handleMove = (e) => {
-    const rect = ref.current.getBoundingClientRect();
+  const move = (e) => {
+    const r = ref.current.getBoundingClientRect();
+    const dx = e.clientX - r.left - r.width/2;
+    const dy = e.clientY - r.top - r.height/2;
 
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-
-    const midX = rect.width / 2;
-    const midY = rect.height / 2;
-
-    const dx = px - midX;
-    const dy = py - midY;
-
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const max = Math.max(midX, midY);
-    const strength = 1 - Math.min(dist / max, 1);
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const max = Math.max(r.width, r.height)/2;
+    const strength = 1 - Math.min(dist/max,1);
 
     x.set(dx * 0.2 * strength);
     y.set(dy * 0.2 * strength);
 
-    rotateY.set(dx / 16);
-    rotateX.set(-dy / 16);
-  };
-
-  const reset = () => {
-    x.set(0);
-    y.set(0);
-    rotateX.set(0);
-    rotateY.set(0);
+    ry.set(dx/16);
+    rx.set(-dy/16);
   };
 
   return (
     <motion.div
       ref={ref}
-      onMouseMove={handleMove}
-      onMouseLeave={reset}
-      style={{
-        x: smoothX,
-        y: smoothY,
-        rotateX: smoothRX,
-        rotateY: smoothRY,
-        transformPerspective: 1200,
-      }}
-      whileHover={{ scale: 1.05 }}
-      className="group relative rounded-2xl overflow-hidden
-      bg-white/[0.05]
-      backdrop-blur-xl
-      border border-white/10
-      shadow-[0_40px_100px_rgba(0,0,0,0.9)]"
+      onMouseMove={move}
+      onMouseLeave={()=>{x.set(0);y.set(0);rx.set(0);ry.set(0);}}
+      style={{ x:sx, y:sy, rotateX:srx, rotateY:sry, transformPerspective:1200 }}
+      whileHover={{ scale:1.05 }}
+      className="group relative rounded-2xl overflow-hidden bg-white/[0.05] border border-white/10 shadow-xl"
     >
-      {/* LIGHT */}
+      {/* light */}
       <motion.div
-        className="pointer-events-none absolute w-[300px] h-[300px] rounded-full blur-2xl opacity-0 group-hover:opacity-100"
+        className="pointer-events-none absolute w-[300px] h-[300px] blur-2xl opacity-0 group-hover:opacity-100"
         style={{
-          left: smoothX,
-          top: smoothY,
-          transform: "translate(-50%, -50%)",
-          background:
-            "radial-gradient(circle, rgba(139,92,246,0.4), transparent 70%)",
+          left:sx, top:sy,
+          transform:"translate(-50%,-50%)",
+          background:"radial-gradient(circle, rgba(139,92,246,0.4), transparent 70%)"
         }}
       />
 
       <img src={p.image} className="w-full h-48 object-cover" />
 
-      <div className="p-4 relative z-10">
-        <h2 className="text-base font-semibold">{p.title}</h2>
+      <div className="p-4">
+        <h2>{p.title}</h2>
         <p className="text-xs text-gray-400">{p.description}</p>
 
         <div className="flex gap-2 mt-4 flex-wrap">
-          <MiniButton onClick={() => like(p._id)}>
-            👍 {p.likes?.length || 0}
-          </MiniButton>
-
-          <MiniButton onClick={() => dislike(p._id)}>
-            👎 {p.dislikes?.length || 0}
-          </MiniButton>
-
-          <MiniButton onClick={() => window.open(p.github)}>
-            GitHub
-          </MiniButton>
-
-          <MiniButton onClick={() => window.open(p.live)}>
-            Live
-          </MiniButton>
-
-          {role === "admin" && (
-            <MiniButton danger onClick={() => deleteProject(p._id)}>
-              Delete
-            </MiniButton>
+          <MiniButton onClick={()=>like(p._id)}>👍 {p.likes?.length||0}</MiniButton>
+          <MiniButton onClick={()=>dislike(p._id)}>👎 {p.dislikes?.length||0}</MiniButton>
+          <MiniButton onClick={()=>window.open(p.github)}>GitHub</MiniButton>
+          <MiniButton onClick={()=>window.open(p.live)}>Live</MiniButton>
+          {role==="admin" && (
+            <MiniButton danger onClick={()=>deleteProject(p._id)}>Delete</MiniButton>
           )}
         </div>
       </div>
@@ -323,22 +269,13 @@ function Card({ p, i, like, dislike, deleteProject, role }) {
   );
 }
 
-/* MINI BUTTON */
 function MiniButton({ children, onClick, danger }) {
   return (
-    <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick}
-      className={`px-2 py-1 rounded-md text-xs ${
-        danger
-          ? "bg-red-500/20 hover:bg-red-500/40"
-          : "bg-white/[0.08] hover:bg-white/[0.15]"
-      }`}
-    >
+    <button onClick={onClick}
+      className={`px-2 py-1 text-xs rounded ${
+        danger ? "bg-red-500/20" : "bg-white/[0.1]"
+      }`}>
       {children}
-    </motion.button>
+    </button>
   );
 }
-
-export default App;
