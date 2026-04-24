@@ -10,7 +10,7 @@ import {
 import Tilt from "react-parallax-tilt";
 import ShaderBackground from "./ShaderBackground";
 import ParticleCanvas from "./Particles";
-import Lenis from "@studio-freight/lenis";
+import Lenis from "lenis";
 
 const API = "https://new-portfolio-backend-11l0.onrender.com";
 
