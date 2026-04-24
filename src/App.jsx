@@ -16,8 +16,17 @@ const API = "https://new-portfolio-backend-11l0.onrender.com";
 
 function App() {
   const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    image: "",
+    github: "",
+    live: "",
+  });
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -34,7 +43,7 @@ function App() {
     mass: 0.4,
   });
 
-  // 🎯 Smooth scroll
+  // 🎯 smooth scroll
   useEffect(() => {
     const lenis = new Lenis({ lerp: 0.08 });
 
@@ -42,12 +51,11 @@ function App() {
       lenis.raf(time);
       requestAnimationFrame(raf);
     }
-    <h1 style={{ color: "red" }}>TEST 999</h1>
 
     requestAnimationFrame(raf);
   }, []);
 
-  // 🎯 Cursor
+  // 💡 cursor
   useEffect(() => {
     const move = (e) => {
       mouseX.set(e.clientX);
@@ -57,19 +65,32 @@ function App() {
     return () => window.removeEventListener("mousemove", move);
   }, []);
 
-  // 🔐 Auth
+  // 🔐 auth + role
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (u) setUser(u);
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        setUser(u);
+
+        const res = await axios.post(`${API}/auth`, {
+          email: u.email,
+        });
+
+        setRole(res.data.role);
+      }
     });
+
     return () => unsub();
   }, []);
 
-  // 📦 Projects
+  // 📦 projects
+  const fetchProjects = async () => {
+    const res = await axios.get(`${API}/projects`);
+    setProjects(res.data);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    axios.get(`${API}/projects`)
-      .then(res => setProjects(res.data))
-      .finally(() => setLoading(false));
+    fetchProjects();
   }, []);
 
   const login = async () => {
@@ -80,12 +101,50 @@ function App() {
   const logout = async () => {
     await signOut(auth);
     setUser(null);
+    setRole(null);
+  };
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  const addProject = async () => {
+    if (!form.title) return;
+    await axios.post(`${API}/projects`, form);
+    setForm({
+      title: "",
+      description: "",
+      image: "",
+      github: "",
+      live: "",
+    });
+    fetchProjects();
+  };
+
+  const deleteProject = async (id) => {
+    await axios.delete(`${API}/projects/${id}`);
+    fetchProjects();
+  };
+
+  const like = async (id) => {
+    if (!user) return alert("Login first");
+    await axios.post(`${API}/projects/${id}/like`, {
+      userEmail: user.email,
+    });
+    fetchProjects();
+  };
+
+  const dislike = async (id) => {
+    if (!user) return alert("Login first");
+    await axios.post(`${API}/projects/${id}/dislike`, {
+      userEmail: user.email,
+    });
+    fetchProjects();
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white relative overflow-hidden">
 
-      {/* 🌌 GPU BACKGROUND */}
+      {/* 🌌 BACKGROUND */}
       <ShaderBackground />
 
       {/* 🧬 PARTICLES */}
@@ -114,22 +173,57 @@ function App() {
         {!user ? (
           <Button onClick={login}>Login</Button>
         ) : (
-          <Button onClick={logout}>Logout</Button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">{user.email}</span>
+            <Button onClick={logout}>Logout</Button>
+          </div>
         )}
       </div>
 
+      {/* 🔥 ADMIN PANEL */}
+      {role === "admin" && (
+        <div className="max-w-7xl mx-auto px-6 mb-10 p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl">
+          <h2 className="text-lg font-semibold mb-4">Admin Panel</h2>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {Object.keys(form).map((k) => (
+              <input
+                key={k}
+                name={k}
+                value={form[k]}
+                onChange={handleChange}
+                placeholder={k}
+                className="p-3 rounded-xl bg-white/10"
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={addProject}
+            className="mt-4 px-5 py-2 bg-purple-500 rounded-xl"
+          >
+            Add Project
+          </button>
+        </div>
+      )}
+
       {/* PROJECTS */}
       <div className="max-w-7xl mx-auto px-6 pb-16 grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-
         {loading
           ? [...Array(6)].map((_, i) => (
               <div key={i} className="h-64 bg-white/5 animate-pulse rounded-2xl"/>
             ))
           : projects.map((p, i) => (
-              <Card key={p._id} p={p} i={i} />
-            ))
-        }
-
+              <Card
+                key={p._id}
+                p={p}
+                i={i}
+                like={like}
+                dislike={dislike}
+                deleteProject={deleteProject}
+                role={role}
+              />
+            ))}
       </div>
     </div>
   );
@@ -150,7 +244,7 @@ function Button({ children, onClick }) {
 }
 
 /* 🧠 CARD */
-function Card({ p, i }) {
+function Card({ p, i, like, dislike, deleteProject, role }) {
   return (
     <Tilt scale={1.05}>
       <motion.div
@@ -172,10 +266,52 @@ function Card({ p, i }) {
         <div className="p-5">
           <h2 className="text-lg font-semibold">{p.title}</h2>
           <p className="text-sm text-gray-400">{p.description}</p>
+
+          <div className="flex gap-2 mt-4 flex-wrap">
+            <MiniButton onClick={() => like(p._id)}>
+              👍 {p.likes?.length || 0}
+            </MiniButton>
+
+            <MiniButton onClick={() => dislike(p._id)}>
+              👎 {p.dislikes?.length || 0}
+            </MiniButton>
+
+            <MiniButton onClick={() => window.open(p.github)}>
+              GitHub
+            </MiniButton>
+
+            <MiniButton onClick={() => window.open(p.live)}>
+              Live
+            </MiniButton>
+
+            {role === "admin" && (
+              <MiniButton danger onClick={() => deleteProject(p._id)}>
+                Delete
+              </MiniButton>
+            )}
+          </div>
         </div>
       </motion.div>
     </Tilt>
   );
 }
 
-export default App; 
+/* 🔹 MINI BUTTON */
+function MiniButton({ children, onClick, danger }) {
+  return (
+    <motion.button
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.92 }}
+      onClick={onClick}
+      className={`px-3 py-1 rounded-lg text-sm ${
+        danger
+          ? "bg-red-500/20 hover:bg-red-500/40"
+          : "bg-white/10 hover:bg-white/20"
+      }`}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+export default App;
