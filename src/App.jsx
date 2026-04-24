@@ -42,6 +42,7 @@ function App() {
       lenis.raf(time);
       requestAnimationFrame(raf);
     }
+    <h1 style={{ color: "red" }}>TEST 999</h1>
 
     requestAnimationFrame(raf);
   }, []);
@@ -177,4 +178,4 @@ function Card({ p, i }) {
   );
 }
 
-export default App;
+export default App; 
