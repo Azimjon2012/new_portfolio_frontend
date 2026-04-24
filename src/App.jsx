@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, provider } from "./firebase";
 import { motion } from "framer-motion";
-import Tilt from "react-parallax-tilt";
 
 const API = "https://new-portfolio-backend-11l0.onrender.com";
 
@@ -34,8 +33,12 @@ function App() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
-        const res = await axios.post(`${API}/auth`, { email: u.email });
-        setRole(res.data.role);
+        try {
+          const res = await axios.post(`${API}/auth`, { email: u.email });
+          setRole(res.data.role);
+        } catch (e) {
+          console.log(e);
+        }
       }
     });
     return () => unsub();
@@ -101,30 +104,33 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-[#050505] text-white relative overflow-hidden">
 
-      {/* 🌌 background */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute w-[500px] h-[500px] bg-purple-600 opacity-20 blur-[120px] rounded-full top-[-100px] left-[-100px]" />
-        <div className="absolute w-[400px] h-[400px] bg-blue-500 opacity-20 blur-[120px] rounded-full bottom-[-100px] right-[-100px]" />
+      {/* 🌌 layered background */}
+      <div className="absolute inset-0 -z-20">
+        <div className="absolute w-[520px] h-[520px] bg-purple-600/30 blur-[140px] rounded-full -top-24 -left-24 animate-pulse" />
+        <div className="absolute w-[420px] h-[420px] bg-blue-500/25 blur-[140px] rounded-full -bottom-24 -right-24 animate-pulse" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_40%)]" />
       </div>
 
       {/* 💡 cursor glow */}
       <div
-        className="pointer-events-none fixed w-80 h-80 rounded-full blur-[120px] opacity-20"
+        className="pointer-events-none fixed w-[420px] h-[420px] rounded-full blur-[160px] opacity-20 -z-10"
         style={{
-          background: "radial-gradient(circle, #7c3aed, transparent)",
-          left: pos.x - 160,
-          top: pos.y - 160,
+          background: "radial-gradient(circle, rgba(124,58,237,0.7), transparent 60%)",
+          left: pos.x - 210,
+          top: pos.y - 210,
         }}
       />
 
       {/* HEADER */}
       <div className="flex justify-between items-center p-6">
         <motion.h1
-          initial={{ opacity: 0, y: -40 }}
+          initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
+          transition={{ duration: 0.6 }}
+          className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(168,85,247,0.6)]"
         >
           My Portfolio
         </motion.h1>
@@ -132,14 +138,17 @@ function App() {
         {!user ? (
           <button
             onClick={login}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-2 rounded-xl hover:scale-105 transition"
+            className="relative overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 px-5 py-2 rounded-xl shadow-lg hover:scale-105 hover:shadow-[0_0_20px_rgba(99,102,241,0.6)] transition"
           >
             Login
           </button>
         ) : (
-          <div className="flex gap-3 items-center">
-            <span className="text-sm opacity-70">{user.email}</span>
-            <button onClick={logout} className="bg-red-500 px-2 rounded">
+          <div className="flex gap-4 items-center">
+            <span className="text-xs md:text-sm opacity-70">{user.email}</span>
+            <button
+              onClick={logout}
+              className="bg-red-500 px-3 py-1 rounded-xl hover:bg-red-600 transition"
+            >
               Logout
             </button>
           </div>
@@ -149,11 +158,11 @@ function App() {
       {/* ADMIN */}
       {role === "admin" && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mx-6 mb-10 p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-6 mb-10 p-6 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)] hover:shadow-[0_0_60px_rgba(168,85,247,0.25)] transition"
         >
-          <h2 className="mb-4 text-lg">Admin Panel</h2>
+          <h2 className="text-lg font-semibold mb-4">Admin Panel</h2>
 
           <div className="grid md:grid-cols-2 gap-3">
             {Object.keys(form).map((k) => (
@@ -170,7 +179,7 @@ function App() {
 
           <button
             onClick={addProject}
-            className="mt-4 bg-purple-500 px-4 py-2 rounded-xl"
+            className="mt-4 bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2 rounded-xl hover:scale-105 transition"
           >
             Add Project
           </button>
@@ -179,75 +188,110 @@ function App() {
 
       {/* PROJECTS */}
       {loading ? (
-        <p className="text-center animate-pulse">Loading...</p>
+        <p className="text-center animate-pulse opacity-60">Loading...</p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 px-6">
           {projects.map((p, i) => (
-            <Tilt key={p._id} scale={1.03} glareEnable={false}>
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-xl hover:shadow-purple-500/30 transition"
-              >
-                {/* overlay без блокировки */}
-                <div className="absolute inset-0 pointer-events-none bg-purple-500/5 opacity-0 group-hover:opacity-100 transition" />
-
-                <img
-                  src={p.image || "https://via.placeholder.com/400"}
-                  className="w-full h-48 object-cover group-hover:scale-110 transition"
-                />
-
-                <div className="p-4 relative z-20">
-                  <h2 className="font-bold">{p.title}</h2>
-                  <p className="text-sm opacity-70">{p.description}</p>
-
-                  <div className="flex gap-2 flex-wrap mt-3">
-
-                    <button
-                      onClick={() => like(p._id)}
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-1 rounded-xl hover:scale-105 transition"
-                    >
-                      👍 {p.likes?.length || 0}
-                    </button>
-
-                    <button
-                      onClick={() => dislike(p._id)}
-                      className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1 rounded-xl hover:scale-105 transition"
-                    >
-                      👎 {p.dislikes?.length || 0}
-                    </button>
-
-                    <button
-                      onClick={() => window.open(p.github, "_blank")}
-                      className="bg-blue-600 px-3 py-1 rounded-xl"
-                    >
-                      GitHub
-                    </button>
-
-                    <button
-                      onClick={() => window.open(p.live, "_blank")}
-                      className="bg-green-500 px-3 py-1 rounded-xl"
-                    >
-                      Live
-                    </button>
-
-                    {role === "admin" && (
-                      <button
-                        onClick={() => deleteProject(p._id)}
-                        className="bg-red-500 px-2 rounded"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </Tilt>
+            <Card
+              key={p._id}
+              p={p}
+              i={i}
+              role={role}
+              like={like}
+              dislike={dislike}
+              deleteProject={deleteProject}
+            />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+// 🧠 Card with safe parallax (no click blocking)
+function Card({ p, i, role, like, dislike, deleteProject }) {
+  const ref = useRef(null);
+  const [rot, setRot] = useState({ x: 0, y: 0 });
+
+  const onMove = (e) => {
+    const rect = ref.current.getBoundingClientRect();
+    const x = (e.clientY - rect.top - rect.height / 2) / 20;
+    const y = (e.clientX - rect.left - rect.width / 2) / 20;
+    setRot({ x: -x, y });
+  };
+
+  const onLeave = () => setRot({ x: 0, y: 0 });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 60 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.08 }}
+    >
+      <div
+        ref={ref}
+        onMouseMove={onMove}
+        onMouseLeave={onLeave}
+        style={{
+          transform: `rotateX(${rot.x}deg) rotateY(${rot.y}deg)`,
+          transformStyle: "preserve-3d",
+        }}
+        className="group relative rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 overflow-hidden shadow-2xl transition-all duration-300 hover:shadow-purple-500/40"
+      >
+        {/* glow overlay (НЕ блокирует клики) */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition" />
+
+        <img
+          src={p.image || "https://via.placeholder.com/400"}
+          className="w-full h-48 object-cover group-hover:scale-110 transition duration-500"
+        />
+
+        <div className="p-4 relative z-20">
+          <h2 className="font-bold text-lg">{p.title}</h2>
+          <p className="text-sm opacity-70 mb-3">{p.description}</p>
+
+          <div className="flex gap-2 flex-wrap">
+
+            <button
+              onClick={() => like(p._id)}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1 rounded-xl shadow-lg hover:scale-105 hover:shadow-blue-500/40 transition"
+            >
+              👍 {p.likes?.length || 0}
+            </button>
+
+            <button
+              onClick={() => dislike(p._id)}
+              className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1 rounded-xl shadow-lg hover:scale-105 hover:shadow-red-500/40 transition"
+            >
+              👎 {p.dislikes?.length || 0}
+            </button>
+
+            <button
+              onClick={() => window.open(p.github, "_blank")}
+              className="bg-blue-600 px-3 py-1 rounded-xl hover:scale-105 transition"
+            >
+              GitHub
+            </button>
+
+            <button
+              onClick={() => window.open(p.live, "_blank")}
+              className="bg-green-500 px-3 py-1 rounded-xl hover:scale-105 transition"
+            >
+              Live
+            </button>
+
+            {role === "admin" && (
+              <button
+                onClick={() => deleteProject(p._id)}
+                className="bg-red-500 px-2 rounded"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
