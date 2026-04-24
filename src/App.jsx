@@ -136,11 +136,14 @@ function App() {
       className="min-h-screen w-full bg-[#050505] text-white relative overflow-x-hidden"
     >
       {/* 🌌 WebGL background */}
-      <div className="fixed inset-0 -z-50">
+      <div className="fixed inset-0 -z-50 pointer-events-none">
         <Scene3D />
       </div>
 
-      {/* 💡 cursor light */}
+      {/* overlay depth */}
+      <div className="fixed inset-0 -z-40 bg-gradient-to-b from-transparent via-black/20 to-black/60 pointer-events-none" />
+
+      {/* 💡 cursor glow */}
       <motion.div
         className="pointer-events-none fixed w-[400px] h-[400px] rounded-full blur-[120px] opacity-20 mix-blend-screen"
         style={{
@@ -225,7 +228,7 @@ function Button({ children, onClick }) {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="px-5 py-2 rounded-xl bg-white/10 border border-white/10 backdrop-blur-md"
+      className="px-5 py-2 rounded-xl bg-white/10 border border-white/10 backdrop-blur-md relative z-10"
     >
       {children}
     </motion.button>
@@ -278,13 +281,13 @@ function Card({ p, i, like, dislike, deleteProject, role }) {
       border border-white/10
       shadow-[0_20px_60px_rgba(0,0,0,0.8)]"
     >
-      {/* spotlight */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition
+      {/* spotlight (НЕ БЛОКИРУЕТ КЛИКИ) */}
+      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition
       bg-gradient-to-br from-white/10 to-transparent"/>
 
       <img src={p.image} className="w-full h-48 object-cover" />
 
-      <div className="p-4">
+      <div className="p-4 relative z-10">
         <h2 className="text-base font-semibold">{p.title}</h2>
         <p className="text-xs text-gray-400">{p.description}</p>
 
