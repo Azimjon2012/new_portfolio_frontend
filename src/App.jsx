@@ -1,20 +1,16 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, provider } from "./firebase";
-import {
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-} from "framer-motion";
-import Scene3D from "./Scene3D";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import Lenis from "@studio-freight/lenis";
+import Scene3D from "./Scene3D";
+import WebGLCard from "./components/WebGLCard";
 
 const API = "https://new-portfolio-backend-11l0.onrender.com";
 
 /* =========================
-   GLOBAL CURSOR (Linear-style)
+   CURSOR (clean, minimal)
 ========================= */
 function Cursor() {
   const x = useMotionValue(0);
@@ -39,7 +35,7 @@ function Cursor() {
         top: sy,
         transform: "translate(-50%, -50%)",
       }}
-      className="fixed z-[999] w-6 h-6 rounded-full pointer-events-none
+      className="fixed z-[999] w-5 h-5 rounded-full pointer-events-none
       bg-white/20 backdrop-blur-xl border border-white/20 mix-blend-difference"
     />
   );
@@ -49,7 +45,6 @@ function Cursor() {
    MAGNETIC BUTTON
 ========================= */
 function MagneticButton({ children, onClick }) {
-  const ref = useRef(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -57,12 +52,13 @@ function MagneticButton({ children, onClick }) {
   const sy = useSpring(y, { stiffness: 200, damping: 20 });
 
   const move = (e) => {
-    const r = ref.current.getBoundingClientRect();
-    const px = e.clientX - r.left - r.width / 2;
-    const py = e.clientY - r.top - r.height / 2;
+    const rect = e.currentTarget.getBoundingClientRect();
 
-    x.set(px * 0.3);
-    y.set(py * 0.3);
+    const px = e.clientX - rect.left - rect.width / 2;
+    const py = e.clientY - rect.top - rect.height / 2;
+
+    x.set(px * 0.25);
+    y.set(py * 0.25);
   };
 
   const leave = () => {
@@ -72,7 +68,6 @@ function MagneticButton({ children, onClick }) {
 
   return (
     <motion.button
-      ref={ref}
       onMouseMove={move}
       onMouseLeave={leave}
       onClick={onClick}
@@ -81,7 +76,7 @@ function MagneticButton({ children, onClick }) {
       className="px-5 py-2 rounded-xl
       bg-gradient-to-br from-white/10 to-white/5
       border border-white/10 backdrop-blur-xl
-      hover:shadow-lg transition will-change-transform"
+      hover:shadow-xl transition will-change-transform"
     >
       {children}
     </motion.button>
@@ -89,89 +84,43 @@ function MagneticButton({ children, onClick }) {
 }
 
 /* =========================
-   LIQUID GLASS CARD + SHADER DISTORTION
+   MINI BUTTON
+========================= */
+function MiniButton({ children, onClick, danger }) {
+  return (
+    <motion.button
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.92 }}
+      onClick={onClick}
+      className={`px-2 py-1 rounded-md text-xs transition ${
+        danger
+          ? "bg-red-500/20 hover:bg-red-500/40"
+          : "bg-white/10 hover:bg-white/20"
+      }`}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+/* =========================
+   CARD (WebGL + depth + refraction)
 ========================= */
 function Card({ p, like, dislike, deleteProject, role }) {
-  const ref = useRef(null);
-
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
-
-  const sx = useSpring(x, { stiffness: 140, damping: 20 });
-  const sy = useSpring(y, { stiffness: 140, damping: 20 });
-  const srx = useSpring(rx, { stiffness: 160, damping: 20 });
-  const sry = useSpring(ry, { stiffness: 160, damping: 20 });
-
-  const lightX = useTransform(sx, [-20, 20], ["0%", "100%"]);
-  const lightY = useTransform(sy, [-20, 20], ["0%", "100%"]);
-
-  const move = (e) => {
-    const r = ref.current.getBoundingClientRect();
-
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-
-    x.set(px * 20);
-    y.set(py * 20);
-
-    ry.set(px * 20);
-    rx.set(-py * 20);
-  };
-
-  const reset = () => {
-    x.set(0); y.set(0); rx.set(0); ry.set(0);
-  };
-
   return (
     <motion.div
-      ref={ref}
-      onMouseMove={move}
-      onMouseLeave={reset}
-      style={{
-        x: sx,
-        y: sy,
-        rotateX: srx,
-        rotateY: sry,
-        transformPerspective: 1200,
-        willChange: "transform",
-      }}
-      whileHover={{ scale: 1.06 }}
+      initial={{ opacity: 0, y: 80 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6 }}
       className="group relative rounded-2xl overflow-hidden
-      bg-gradient-to-br from-white/10 to-white/5
-      backdrop-blur-2xl border border-white/10
-      shadow-[0_30px_80px_rgba(0,0,0,0.9)]"
+      bg-white/5 backdrop-blur-xl border border-white/10"
     >
-      {/* SVG shader distortion */}
-      <svg className="absolute w-0 h-0">
-        <filter id="distort">
-          <feTurbulence type="turbulence" baseFrequency="0.01" numOctaves="2" result="noise"/>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="10"/>
-        </filter>
-      </svg>
+      {/* WEBGL IMAGE */}
+      <WebGLCard image={p.image} />
 
-      {/* IMAGE */}
-      <div className="relative">
-        <img
-          src={p.image}
-          className="w-full h-48 object-cover"
-          style={{ filter: "url(#distort)" }}
-        />
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-      </div>
-
-      {/* LIQUID LIGHT */}
-      <motion.div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at var(--x) var(--y), rgba(255,255,255,0.25), transparent 60%)",
-          "--x": lightX,
-          "--y": lightY,
-        }}
-      />
+      {/* iOS-like blur refraction */}
+      <div className="absolute inset-0 backdrop-blur-[20px] opacity-0 group-hover:opacity-100 transition duration-300" />
 
       {/* CONTENT */}
       <div className="p-4 relative z-10">
@@ -206,24 +155,6 @@ function Card({ p, like, dislike, deleteProject, role }) {
   );
 }
 
-/* ========================= */
-function MiniButton({ children, onClick, danger }) {
-  return (
-    <motion.button
-      whileHover={{ scale: 1.08 }}
-      whileTap={{ scale: 0.92 }}
-      onClick={onClick}
-      className={`px-2 py-1 rounded-md text-xs transition ${
-        danger
-          ? "bg-red-500/20 hover:bg-red-500/40"
-          : "bg-white/10 hover:bg-white/20"
-      }`}
-    >
-      {children}
-    </motion.button>
-  );
-}
-
 /* =========================
    MAIN APP
 ========================= */
@@ -241,7 +172,7 @@ function App() {
     live: "",
   });
 
-  // Lenis smooth scroll
+  /* Lenis smooth scroll */
   useEffect(() => {
     const lenis = new Lenis({
       smooth: true,
@@ -256,6 +187,7 @@ function App() {
     requestAnimationFrame(raf);
   }, []);
 
+  /* AUTH */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
@@ -269,6 +201,7 @@ function App() {
     return () => unsub();
   }, []);
 
+  /* FETCH PROJECTS */
   const fetchProjects = async () => {
     const res = await axios.get(`${API}/projects`);
     setProjects(res.data);
@@ -279,6 +212,7 @@ function App() {
     fetchProjects();
   }, []);
 
+  /* ACTIONS */
   const login = async () => {
     const res = await signInWithPopup(auth, provider);
     setUser(res.user);
@@ -331,12 +265,13 @@ function App() {
     <div className="min-h-screen bg-[#030303] text-white relative overflow-x-hidden">
       <Cursor />
 
+      {/* BACKGROUND */}
       <div className="fixed inset-0 -z-50 pointer-events-none">
         <Scene3D />
       </div>
 
       {/* HEADER */}
-      <div className="max-w-7xl mx-auto px-6 py-10 flex justify-between items-center z-10">
+      <div className="max-w-7xl mx-auto px-6 py-10 flex justify-between items-center">
         <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
           Portfolio
         </h1>
