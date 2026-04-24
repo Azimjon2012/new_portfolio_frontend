@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, provider } from "./firebase";
@@ -22,22 +22,6 @@ function App() {
     github: "",
     live: "",
   });
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const smoothX = useSpring(mouseX, { stiffness: 60, damping: 18 });
-  const smoothY = useSpring(mouseY, { stiffness: 60, damping: 18 });
-
-  // global cursor tracking
-  useEffect(() => {
-    const move = (e) => {
-      mouseX.set(e.clientX);
-      mouseY.set(e.clientY);
-    };
-    window.addEventListener("mousemove", move);
-    return () => window.removeEventListener("mousemove", move);
-  }, []);
 
   // auth
   useEffect(() => {
@@ -113,29 +97,25 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white relative overflow-x-hidden">
+    <div className="min-h-screen text-white relative overflow-x-hidden">
 
-      {/* background */}
+      {/* BASE */}
+      <div className="absolute inset-0 -z-30 bg-[#050505]" />
+
+      {/* animated gradient */}
+      <div className="absolute inset-0 -z-20 opacity-30 animate-pulse bg-gradient-to-br from-purple-500/20 via-transparent to-blue-500/20" />
+
+      {/* glow blobs */}
+      <div className="absolute top-[-200px] left-[-200px] w-[600px] h-[600px] bg-purple-500/20 blur-[180px] rounded-full -z-20" />
+      <div className="absolute bottom-[-200px] right-[-200px] w-[600px] h-[600px] bg-blue-500/20 blur-[180px] rounded-full -z-20" />
+
       <ShaderBackground />
-
-      <div className="absolute inset-0 -z-20 opacity-50">
+      <div className="absolute inset-0 -z-10 opacity-25">
         <ParticleCanvas />
       </div>
 
-      {/* GLOBAL LIGHT */}
-      <motion.div
-        className="pointer-events-none fixed w-[900px] h-[900px] rounded-full blur-[250px] opacity-50 mix-blend-screen"
-        style={{
-          left: smoothX,
-          top: smoothY,
-          transform: "translate(-50%, -50%)",
-          background:
-            "radial-gradient(circle, rgba(139,92,246,0.45), rgba(59,130,246,0.35), transparent 70%)",
-        }}
-      />
-
       {/* header */}
-      <div className="max-w-7xl mx-auto px-6 py-8 flex justify-between items-center">
+      <div className="max-w-7xl mx-auto px-6 py-10 flex justify-between items-center">
         <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
           Portfolio
         </h1>
@@ -144,17 +124,16 @@ function App() {
           <Button onClick={login}>Login</Button>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{user.email}</span>
+            <span className="text-xs text-gray-300">{user.email}</span>
             <Button onClick={logout}>Logout</Button>
           </div>
         )}
       </div>
 
-      {/* admin */}
+      {/* ADMIN */}
       {role === "admin" && (
-        <div className="max-w-7xl mx-auto px-6 mb-10 p-6 rounded-2xl
-        bg-white/[0.06] backdrop-blur-2xl border border-white/10
-        shadow-[0_0_80px_rgba(139,92,246,0.2)]">
+        <div className="max-w-6xl mx-auto px-6 mb-12 p-6 rounded-2xl
+        bg-white/[0.05] backdrop-blur-xl border border-white/10 shadow-xl">
           <h2 className="text-sm mb-4 text-gray-300">Admin Panel</h2>
 
           <div className="grid md:grid-cols-2 gap-3">
@@ -165,7 +144,7 @@ function App() {
                 value={form[k]}
                 onChange={handleChange}
                 placeholder={k}
-                className="p-2 rounded-lg bg-white/[0.08] border border-white/10 text-sm outline-none focus:border-purple-400"
+                className="p-2 rounded-lg bg-white/[0.07] border border-white/10 text-sm outline-none focus:border-purple-400"
               />
             ))}
           </div>
@@ -179,8 +158,8 @@ function App() {
         </div>
       )}
 
-      {/* projects */}
-      <div className="max-w-7xl mx-auto px-6 pb-16 grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* PROJECTS */}
+      <div className="max-w-6xl mx-auto px-6 pb-20 grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading
           ? [...Array(6)].map((_, i) => (
               <div key={i} className="h-64 bg-white/5 animate-pulse rounded-2xl"/>
@@ -205,48 +184,67 @@ function App() {
 function Button({ children, onClick }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.08 }}
-      whileTap={{ scale: 0.94 }}
-      transition={{ type: "spring", stiffness: 300 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 250 }}
       onClick={onClick}
-      className="px-5 py-2 rounded-xl
-      bg-white/[0.08] backdrop-blur-xl
-      border border-white/10
-      shadow-[0_0_20px_rgba(139,92,246,0.2)]
-      hover:shadow-[0_0_40px_rgba(139,92,246,0.5)]"
+      className="px-5 py-2 rounded-xl bg-white/[0.08] border border-white/10 backdrop-blur-md hover:bg-white/[0.15]"
     >
       {children}
     </motion.button>
   );
 }
 
-/* CARD */
+/* CARD with spotlight */
 function Card({ p, i, like, dislike, deleteProject, role }) {
+  const ref = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const smoothX = useSpring(x, { stiffness: 120, damping: 20 });
+  const smoothY = useSpring(y, { stiffness: 120, damping: 20 });
+
+  const handleMove = (e) => {
+    const rect = ref.current.getBoundingClientRect();
+    x.set(e.clientX - rect.left);
+    y.set(e.clientY - rect.top);
+  };
+
   return (
-    <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} scale={1.05}>
+    <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} scale={1.03}>
       <motion.div
-        initial={{ opacity: 0, y: 60 }}
+        ref={ref}
+        onMouseMove={handleMove}
+        initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ delay: i * 0.05 }}
-        whileHover={{ y: -12 }}
+        whileHover={{ y: -8 }}
         className="group relative rounded-2xl overflow-hidden
-        bg-white/[0.08]
-        backdrop-blur-2xl
+        bg-white/[0.06]
+        backdrop-blur-xl
         border border-white/10
-        shadow-[0_20px_60px_rgba(0,0,0,0.8)]"
+        shadow-[0_10px_40px_rgba(0,0,0,0.6)]"
       >
-        {/* dynamic light inside card */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500
-        bg-gradient-to-br from-purple-500/20 via-transparent to-blue-500/20 blur-2xl"/>
+        {/* spotlight */}
+        <motion.div
+          className="pointer-events-none absolute w-[300px] h-[300px] rounded-full blur-2xl opacity-0 group-hover:opacity-100"
+          style={{
+            left: smoothX,
+            top: smoothY,
+            transform: "translate(-50%, -50%)",
+            background:
+              "radial-gradient(circle, rgba(139,92,246,0.25), transparent 70%)",
+          }}
+        />
 
         <img
           src={p.image}
-          className="w-full h-52 object-cover transition duration-700 group-hover:scale-110"
+          className="w-full h-48 object-cover transition duration-500 group-hover:scale-105"
         />
 
-        <div className="p-5">
-          <h2 className="text-lg font-semibold">{p.title}</h2>
-          <p className="text-sm text-gray-400">{p.description}</p>
+        <div className="p-4">
+          <h2 className="text-base font-semibold">{p.title}</h2>
+          <p className="text-xs text-gray-400 mt-1">{p.description}</p>
 
           <div className="flex gap-2 mt-4 flex-wrap">
             <MiniButton onClick={() => like(p._id)}>
@@ -281,11 +279,10 @@ function Card({ p, i, like, dislike, deleteProject, role }) {
 function MiniButton({ children, onClick, danger }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 300 }}
+      whileHover={{ scale: 1.06 }}
+      whileTap={{ scale: 0.94 }}
       onClick={onClick}
-      className={`px-3 py-1 rounded-lg text-sm ${
+      className={`px-2 py-1 rounded-md text-xs ${
         danger
           ? "bg-red-500/20 hover:bg-red-500/40"
           : "bg-white/[0.1] hover:bg-white/[0.2]"
