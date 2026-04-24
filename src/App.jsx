@@ -7,6 +7,7 @@ import {
   useMotionValue,
   useSpring,
   useVelocity,
+  useTransform,
 } from "framer-motion";
 import Scene3D from "./Scene3D";
 
@@ -26,12 +27,12 @@ function App() {
     live: "",
   });
 
-  // 🔥 mouse
+  // 🧠 mouse tracking
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  const smoothX = useSpring(mouseX, { stiffness: 60, damping: 20 });
-  const smoothY = useSpring(mouseY, { stiffness: 60, damping: 20 });
+  const smoothX = useSpring(mouseX, { stiffness: 80, damping: 20 });
+  const smoothY = useSpring(mouseY, { stiffness: 80, damping: 20 });
 
   useEffect(() => {
     const move = (e) => {
@@ -42,15 +43,18 @@ function App() {
     return () => window.removeEventListener("mousemove", move);
   }, []);
 
-  // ⚡ velocity scroll
+  // ⚡ velocity scroll (сглаженный)
   const scrollY = useMotionValue(0);
   const velocity = useVelocity(scrollY);
-  const scale = useSpring(velocity, { stiffness: 50, damping: 20 });
+  const smoothVelocity = useSpring(velocity, {
+    stiffness: 40,
+    damping: 20,
+  });
+
+  const scale = useTransform(smoothVelocity, [-500, 0, 500], [1.005, 1, 1.005]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      scrollY.set(window.scrollY);
-    };
+    const handleScroll = () => scrollY.set(window.scrollY);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -130,9 +134,7 @@ function App() {
 
   return (
     <motion.div
-      style={{
-        scale: scale.get() > 5 ? 1.01 : 1,
-      }}
+      style={{ scale }}
       className="min-h-screen w-full bg-[#050505] text-white relative overflow-x-hidden"
     >
       {/* 🌌 WebGL background */}
@@ -140,18 +142,19 @@ function App() {
         <Scene3D />
       </div>
 
-      {/* overlay depth */}
-      <div className="fixed inset-0 -z-40 bg-gradient-to-b from-transparent via-black/20 to-black/60 pointer-events-none" />
+      {/* 🎨 gradient depth */}
+      <div className="fixed inset-0 -z-40 pointer-events-none
+      bg-[radial-gradient(circle_at_20%_20%,rgba(139,92,246,0.15),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.15),transparent_40%)]" />
 
       {/* 💡 cursor glow */}
       <motion.div
-        className="pointer-events-none fixed w-[400px] h-[400px] rounded-full blur-[120px] opacity-20 mix-blend-screen"
+        className="pointer-events-none fixed w-[300px] h-[300px] rounded-full blur-[100px] opacity-20"
         style={{
           left: smoothX,
           top: smoothY,
           transform: "translate(-50%, -50%)",
           background:
-            "radial-gradient(circle, rgba(139,92,246,0.25), transparent 70%)",
+            "radial-gradient(circle, rgba(139,92,246,0.3), transparent 70%)",
         }}
       />
 
@@ -174,7 +177,7 @@ function App() {
       {/* ADMIN */}
       {role === "admin" && (
         <div className="max-w-6xl mx-auto px-6 mb-10 p-6 rounded-2xl
-        bg-white/[0.06] backdrop-blur-xl border border-white/10 shadow-xl relative z-10">
+        bg-white/[0.04] backdrop-blur-xl border border-white/10 shadow-xl relative z-10">
           <h2 className="text-sm mb-4 text-gray-300">Admin Panel</h2>
 
           <div className="grid md:grid-cols-2 gap-3">
@@ -185,7 +188,7 @@ function App() {
                 value={form[k]}
                 onChange={handleChange}
                 placeholder={k}
-                className="p-2 rounded-lg bg-white/[0.07] border border-white/10 text-sm outline-none focus:border-purple-400"
+                className="p-2 rounded-lg bg-white/[0.06] border border-white/10 text-sm outline-none focus:border-purple-400"
               />
             ))}
           </div>
@@ -225,10 +228,10 @@ function App() {
 function Button({ children, onClick }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className="px-5 py-2 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.1]"
       onClick={onClick}
-      className="px-5 py-2 rounded-xl bg-white/10 border border-white/10 backdrop-blur-md relative z-10"
     >
       {children}
     </motion.button>
@@ -238,52 +241,43 @@ function Button({ children, onClick }) {
 /* CARD */
 function Card({ p, i, like, dislike, deleteProject, role }) {
   const ref = useRef(null);
-  const rotateX = useMotionValue(0);
-  const rotateY = useMotionValue(0);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
 
-  const smoothX = useSpring(rotateX, { stiffness: 150, damping: 20 });
-  const smoothY = useSpring(rotateY, { stiffness: 150, damping: 20 });
+  const smoothX = useSpring(x, { stiffness: 120, damping: 20 });
+  const smoothY = useSpring(y, { stiffness: 120, damping: 20 });
 
   const move = (e) => {
     const rect = ref.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const midX = rect.width / 2;
-    const midY = rect.height / 2;
-
-    rotateY.set((x - midX) / 15);
-    rotateX.set(-(y - midY) / 15);
-  };
-
-  const reset = () => {
-    rotateX.set(0);
-    rotateY.set(0);
+    x.set(e.clientX - rect.left);
+    y.set(e.clientY - rect.top);
   };
 
   return (
     <motion.div
       ref={ref}
       onMouseMove={move}
-      onMouseLeave={reset}
-      style={{
-        rotateX: smoothX,
-        rotateY: smoothY,
-        transformPerspective: 1000,
-      }}
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.05 }}
-      whileHover={{ y: -8 }}
+      whileHover={{ y: -6 }}
       className="group relative rounded-2xl overflow-hidden
-      bg-white/[0.06]
+      bg-white/[0.05]
       backdrop-blur-xl
       border border-white/10
-      shadow-[0_20px_60px_rgba(0,0,0,0.8)]"
+      shadow-lg"
     >
-      {/* spotlight (НЕ БЛОКИРУЕТ КЛИКИ) */}
-      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition
-      bg-gradient-to-br from-white/10 to-transparent"/>
+      {/* REAL spotlight */}
+      <motion.div
+        className="pointer-events-none absolute w-[200px] h-[200px] rounded-full blur-xl opacity-0 group-hover:opacity-100"
+        style={{
+          left: smoothX,
+          top: smoothY,
+          transform: "translate(-50%, -50%)",
+          background:
+            "radial-gradient(circle, rgba(139,92,246,0.2), transparent 70%)",
+        }}
+      />
 
       <img src={p.image} className="w-full h-48 object-cover" />
 
@@ -323,13 +317,13 @@ function Card({ p, i, like, dislike, deleteProject, role }) {
 function MiniButton({ children, onClick, danger }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.06 }}
-      whileTap={{ scale: 0.94 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
       className={`px-2 py-1 rounded-md text-xs ${
         danger
           ? "bg-red-500/20 hover:bg-red-500/40"
-          : "bg-white/[0.1] hover:bg-white/[0.2]"
+          : "bg-white/[0.08] hover:bg-white/[0.15]"
       }`}
     >
       {children}
