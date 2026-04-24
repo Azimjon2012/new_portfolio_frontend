@@ -6,8 +6,6 @@ import {
   motion,
   useMotionValue,
   useSpring,
-  useVelocity,
-  useTransform,
 } from "framer-motion";
 import Scene3D from "./Scene3D";
 
@@ -27,7 +25,7 @@ function App() {
     live: "",
   });
 
-  // 🧠 mouse tracking
+  // 🧠 global cursor tracking
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -41,22 +39,6 @@ function App() {
     };
     window.addEventListener("mousemove", move);
     return () => window.removeEventListener("mousemove", move);
-  }, []);
-
-  // ⚡ velocity scroll (сглаженный)
-  const scrollY = useMotionValue(0);
-  const velocity = useVelocity(scrollY);
-  const smoothVelocity = useSpring(velocity, {
-    stiffness: 40,
-    damping: 20,
-  });
-
-  const scale = useTransform(smoothVelocity, [-500, 0, 500], [1.005, 1, 1.005]);
-
-  useEffect(() => {
-    const handleScroll = () => scrollY.set(window.scrollY);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // 🔐 auth
@@ -133,28 +115,22 @@ function App() {
   };
 
   return (
-    <motion.div
-      style={{ scale }}
-      className="min-h-screen w-full bg-[#050505] text-white relative overflow-x-hidden"
-    >
+    <div className="min-h-screen bg-[#050505] text-white relative overflow-x-hidden">
+
       {/* 🌌 WebGL background */}
-      <div className="fixed inset-0 -z-50 pointer-events-none">
+      <div className="fixed inset-0 -z-50 pointer-events-none overflow-hidden">
         <Scene3D />
       </div>
 
-      {/* 🎨 gradient depth */}
-      <div className="fixed inset-0 -z-40 pointer-events-none
-      bg-[radial-gradient(circle_at_20%_20%,rgba(139,92,246,0.15),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.15),transparent_40%)]" />
-
-      {/* 💡 cursor glow */}
+      {/* 💡 GLOBAL CURSOR LIGHT */}
       <motion.div
-        className="pointer-events-none fixed w-[300px] h-[300px] rounded-full blur-[100px] opacity-20"
+        className="pointer-events-none fixed w-[500px] h-[500px] rounded-full blur-[140px] opacity-30 mix-blend-screen -z-40"
         style={{
           left: smoothX,
           top: smoothY,
           transform: "translate(-50%, -50%)",
           background:
-            "radial-gradient(circle, rgba(139,92,246,0.3), transparent 70%)",
+            "radial-gradient(circle, rgba(139,92,246,0.35), rgba(59,130,246,0.25), transparent 70%)",
         }}
       />
 
@@ -177,7 +153,7 @@ function App() {
       {/* ADMIN */}
       {role === "admin" && (
         <div className="max-w-6xl mx-auto px-6 mb-10 p-6 rounded-2xl
-        bg-white/[0.04] backdrop-blur-xl border border-white/10 shadow-xl relative z-10">
+        bg-white/[0.05] backdrop-blur-xl border border-white/10 shadow-xl relative z-10">
           <h2 className="text-sm mb-4 text-gray-300">Admin Panel</h2>
 
           <div className="grid md:grid-cols-2 gap-3">
@@ -220,7 +196,7 @@ function App() {
               />
             ))}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -228,9 +204,9 @@ function App() {
 function Button({ children, onClick }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      className="px-5 py-2 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.1]"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className="px-5 py-2 rounded-xl bg-white/[0.08] border border-white/10 backdrop-blur-md hover:bg-white/[0.15]"
       onClick={onClick}
     >
       {children}
@@ -238,44 +214,78 @@ function Button({ children, onClick }) {
   );
 }
 
-/* CARD */
+/* GOD TIER CARD */
 function Card({ p, i, like, dislike, deleteProject, role }) {
   const ref = useRef(null);
+
   const x = useMotionValue(0);
   const y = useMotionValue(0);
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
 
-  const smoothX = useSpring(x, { stiffness: 120, damping: 20 });
-  const smoothY = useSpring(y, { stiffness: 120, damping: 20 });
+  const smoothX = useSpring(x, { stiffness: 100, damping: 18 });
+  const smoothY = useSpring(y, { stiffness: 100, damping: 18 });
+  const smoothRX = useSpring(rotateX, { stiffness: 140, damping: 18 });
+  const smoothRY = useSpring(rotateY, { stiffness: 140, damping: 18 });
 
-  const move = (e) => {
+  const handleMove = (e) => {
     const rect = ref.current.getBoundingClientRect();
-    x.set(e.clientX - rect.left);
-    y.set(e.clientY - rect.top);
+
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    const midX = rect.width / 2;
+    const midY = rect.height / 2;
+
+    const dx = px - midX;
+    const dy = py - midY;
+
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const max = Math.max(midX, midY);
+    const strength = 1 - Math.min(dist / max, 1);
+
+    x.set(dx * 0.2 * strength);
+    y.set(dy * 0.2 * strength);
+
+    rotateY.set(dx / 16);
+    rotateX.set(-dy / 16);
+  };
+
+  const reset = () => {
+    x.set(0);
+    y.set(0);
+    rotateX.set(0);
+    rotateY.set(0);
   };
 
   return (
     <motion.div
       ref={ref}
-      onMouseMove={move}
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ delay: i * 0.05 }}
-      whileHover={{ y: -6 }}
+      onMouseMove={handleMove}
+      onMouseLeave={reset}
+      style={{
+        x: smoothX,
+        y: smoothY,
+        rotateX: smoothRX,
+        rotateY: smoothRY,
+        transformPerspective: 1200,
+      }}
+      whileHover={{ scale: 1.05 }}
       className="group relative rounded-2xl overflow-hidden
       bg-white/[0.05]
       backdrop-blur-xl
       border border-white/10
-      shadow-lg"
+      shadow-[0_40px_100px_rgba(0,0,0,0.9)]"
     >
-      {/* REAL spotlight */}
+      {/* LIGHT */}
       <motion.div
-        className="pointer-events-none absolute w-[200px] h-[200px] rounded-full blur-xl opacity-0 group-hover:opacity-100"
+        className="pointer-events-none absolute w-[300px] h-[300px] rounded-full blur-2xl opacity-0 group-hover:opacity-100"
         style={{
           left: smoothX,
           top: smoothY,
           transform: "translate(-50%, -50%)",
           background:
-            "radial-gradient(circle, rgba(139,92,246,0.2), transparent 70%)",
+            "radial-gradient(circle, rgba(139,92,246,0.4), transparent 70%)",
         }}
       />
 
