@@ -10,37 +10,36 @@ function ShaderPlane() {
   });
 
   return (
-    <mesh ref={ref}>
-      <planeGeometry args={[10, 10]} />
+    <mesh ref={ref} scale={[10, 10, 1]}>
+      <planeGeometry />
       <shaderMaterial
-        uniforms={{ uTime: { value: 0 } }}
+        uniforms={{
+          uTime: { value: 0 },
+        }}
         fragmentShader={`
           uniform float uTime;
           varying vec2 vUv;
 
-          float noise(vec2 p){
-            return sin(p.x)*sin(p.y);
-          }
-
-          void main(){
+          void main() {
             vec2 uv = vUv;
 
-            float n = noise(uv * 6.0 + uTime * 0.4);
+            float wave = sin(uv.x * 10.0 + uTime) * 0.1;
+            uv.y += wave;
 
-            vec3 col = mix(
-              vec3(0.05,0.0,0.15),
-              vec3(0.2,0.0,0.4),
-              n
+            vec3 color = vec3(
+              0.1 + uv.x * 0.2,
+              0.05,
+              0.2 + uv.y * 0.3
             );
 
-            gl_FragColor = vec4(col,1.0);
+            gl_FragColor = vec4(color, 1.0);
           }
         `}
         vertexShader={`
           varying vec2 vUv;
-          void main(){
+          void main() {
             vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
       />
@@ -50,7 +49,7 @@ function ShaderPlane() {
 
 export default function ShaderBackground() {
   return (
-    <Canvas className="absolute inset-0 -z-20">
+    <Canvas className="absolute inset-0 -z-30">
       <ShaderPlane />
     </Canvas>
   );
